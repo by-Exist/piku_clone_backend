@@ -13,6 +13,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # Third apps
+    "rest_framework",
     # Local apps
 ]
 
@@ -79,3 +80,5 @@ MEDIA_URL = "/media/"
 # STATIC_ROOT
 # https://docs.djangoproject.com/en/3.1/ref/settings/#static-root
 STATIC_ROOT = BASE_DIR / "staticfiles"  # collectstatic path
+
+REST_FRAMEWORK = {}  # FIXME: Set REST_FRAMEWORK
