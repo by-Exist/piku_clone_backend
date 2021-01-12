@@ -15,6 +15,7 @@ INSTALLED_APPS = [
     # Third apps
     "rest_framework",
     # Local apps
+    "accountapp",
 ]
 
 MIDDLEWARE = [
@@ -46,6 +47,8 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "backend.wsgi.application"
+
+AUTH_USER_MODEL = "accountapp.User"
 
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
