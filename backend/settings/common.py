@@ -81,4 +81,12 @@ MEDIA_URL = "/media/"
 # https://docs.djangoproject.com/en/3.1/ref/settings/#static-root
 STATIC_ROOT = BASE_DIR / "staticfiles"  # collectstatic path
 
-REST_FRAMEWORK = {}  # FIXME: Set REST_FRAMEWORK
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_jwt.authentication.JSONWebTokenAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+}
