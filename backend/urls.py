@@ -4,9 +4,12 @@ from django.contrib import admin
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 from accountapp import views as accountapp_views
+from worldcupapp import views as worldcupapp_views
 
 router = DefaultRouter()
 router.register("accounts", accountapp_views.UserViewSet)
+router.register("worldcups", worldcupapp_views.WorldcupViewSet)
+router.register("albums", worldcupapp_views.AlbumViewSet, basename="album")
 
 urlpatterns = [
     path("admin/", admin.site.urls),
