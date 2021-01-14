@@ -41,3 +41,10 @@ MEDIA_ROOT = BASE_DIR / "backend" / "media"  # use dev upload file path
 INTERNAL_IPS = [
     "127.0.0.1",
 ]
+
+# DJANGO REST FRAMEWORK JWT
+# https://jpadilla.github.io/django-rest-framework-jwt/
+JWT_AUTH = {
+    "JWT_SECRET_KEY": env("DJANGO_JWT_SECRET_KEY"),
+    "JWT_ALLOW_REFRESH": True,
+}

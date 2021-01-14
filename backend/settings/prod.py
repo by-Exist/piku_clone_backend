@@ -19,3 +19,10 @@ DATABASES = {}  # FIXME: Set DATABASES
 # Logging
 # https://docs.djangoproject.com/en/3.1/topics/logging/
 LOGGING = {}  # FIXME: Set LOGGING
+
+# DJANGO REST FRAMEWORK JWT
+# https://jpadilla.github.io/django-rest-framework-jwt/
+JWT_AUTH = {
+    "JWT_SECRET_KEY": env("DJANGO_JWT_SECRET_KEY"),
+    "JWT_ALLOW_REFRESH": True,
+}
