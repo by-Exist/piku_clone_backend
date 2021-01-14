@@ -27,14 +27,28 @@ class Album(models.Model):
         "데이터 타입", max_length=1, choices=MEDIA_TYPES, default=None
     )
 
+    def get_media_type(self):
+        for T, typ in self.MEDIA_TYPES:
+            if self.media_type == T:
+                return typ
+
     # FIXME: AlbumSerializer의 어떤 동작 과정때문인지는 몰라도 쿼리가 4번씩 반복된다. 추후 수정.
     @property
     def media_list(self):
-        for M, media_type in self.MEDIA_TYPES:
-            if self.media_type == M:
-                attr = f"{media_type}_set"
-                return getattr(self, attr).values_list("media", flat=True)
-        return []  # FIXME: return이 좀 더 적절하게 구성되는 방법이 없을까?
+        media_type = self.get_media_type()
+        attr = f"{media_type}_set"
+        try:
+            return getattr(self, attr).values_list("media", flat=True)
+        except AttributeError:
+            return []
+
+    # @property
+    # def media_list(self):
+    #     for M, media_type in self.MEDIA_TYPES:
+    #         if self.media_type == M:
+    #             attr = f"{media_type}_set"
+    #             return getattr(self, attr).values_list("media", flat=True)
+    #     return []  # FIXME: return이 좀 더 적절하게 구성되는 방법이 없을까?
 
 
 class Text(models.Model):
@@ -59,30 +73,24 @@ class Video(models.Model):
 
 class WorldcupManager(models.Manager):
     def create_with_album(self, worldcup_data=None, album_data=None):
-
         worldcup = Worldcup(**worldcup_data)
         album = Album(**album_data)
         album.save()
         worldcup.album = album
         worldcup.save()
-
         return worldcup
 
     def update_with_album(self, worldcup, worldcup_data=None, album_data=None):
-
         worldcup = worldcup
         album = worldcup.album
-
         if worldcup_data:
             for key, value in worldcup_data.items():
                 setattr(worldcup, key, value)
             worldcup.save()
-
         if album_data:
             for key, value in album_data.items():
                 setattr(album, key, value)
             album.save()
-
         return worldcup
 
 

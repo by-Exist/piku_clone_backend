@@ -37,29 +37,29 @@ class AlbumSerializer(serializers.ModelSerializer):
             "media_list",
         ]
 
-    # TODO: Album을 통해 media를 관리하는게 좋을까?
-    # 아니면 각자 따로 관리하도록 구현해야 할까?
-
-    # text_set = TextSerializer(many=True, required=False, write_only=True)
-    # image_set = TextSerializer(many=True, required=False, write_only=True)
-    # gif_set = TextSerializer(many=True, required=False, write_only=True)
-    # video_set = TextSerializer(many=True, required=False, write_only=True)
-
-    # class Meta:
-    #     model = models.Album
-    #     fields = [
-    #         "media_type",
-    #         "media_list",
-    #         "text_set",
-    #         "image_set",
-    #         "gif_set",
-    #         "video_set",
-    #     ]
+    def get_media_serializer_class(album):
+        media_types = {
+            "T": TextSerializer,
+            "I": ImageSerializer,
+            "G": GifSerializer,
+            "V": VideoSerializer,
+        }
+        return media_types[album.media_type]
 
 
-class WorldCupSerializer(serializers.HyperlinkedModelSerializer):
+class WorldcupUsedAlbumSerializer(serializers.ModelSerializer):
+
+    link = serializers.HyperlinkedIdentityField("album-detail")
+
+    class Meta:
+        model = models.Album
+        fields = ["media_type", "link"]
+
+
+class WorldcupSerializer(serializers.ModelSerializer):
 
     creator = serializers.CharField(read_only=True, source="creator.profile.nickname")
+    album = WorldcupUsedAlbumSerializer()
 
     class Meta:
         model = models.Worldcup

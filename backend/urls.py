@@ -9,7 +9,7 @@ from worldcupapp import views as worldcupapp_views
 router = DefaultRouter()
 router.register("accounts", accountapp_views.UserViewSet)
 router.register("worldcups", worldcupapp_views.WorldcupViewSet)
-router.register("albums", worldcupapp_views.AlbumViewSet, basename="album")
+router.register("albums", worldcupapp_views.AlbumViewSet)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
