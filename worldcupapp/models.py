@@ -1,19 +1,15 @@
 # https://medium.com/ibisdev/upload-multiple-images-to-a-model-with-django-fd00d8551a1c
 
+from backend.settings.dev import MEDIA_ROOT
 from pprint import pprint
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.core.validators import MinLengthValidator
 
 
 User = get_user_model()
 
 
-def get_upload_path(instance, filename):
-    name = instance.album.model.__class__._meta.verbose_name_plural.replace(" ", "_")
-    return f"{name}/images/%Y/%m/%d/%h/{filename}"
-
-
-# TODO: 썸네일, 타이틀 추가
 class Album(models.Model):
 
     MEDIA_TYPES = [
@@ -23,81 +19,68 @@ class Album(models.Model):
         ("V", "video"),
     ]
 
+    # TODO: 썸네일 추가 (썸네일을 만들어 저장하는 과정을 셀러리로 구현해보자)
+    # thumbnail = models.ImageField("썸네일", upload_to="Album/thumbnail/%Y/%m/%d/")
     media_type = models.CharField(
         "데이터 타입", max_length=1, choices=MEDIA_TYPES, default=None
     )
+    thumbnail = models.ImageField(
+        "썸네일", editable=False, upload_to="worldcupapp/album/thumbnail/%Y/%m/%d/"
+    )
 
-    def get_media_type(self):
-        for T, typ in self.MEDIA_TYPES:
-            if self.media_type == T:
-                return typ
-
-    # FIXME: AlbumSerializer의 어떤 동작 과정때문인지는 몰라도 쿼리가 4번씩 반복된다. 추후 수정.
-    @property
-    def media_list(self):
-        media_type = self.get_media_type()
-        attr = f"{media_type}_set"
-        try:
-            return getattr(self, attr).values_list("media", flat=True)
-        except AttributeError:
-            return []
-
-    # @property
-    # def media_list(self):
-    #     for M, media_type in self.MEDIA_TYPES:
-    #         if self.media_type == M:
-    #             attr = f"{media_type}_set"
-    #             return getattr(self, attr).values_list("media", flat=True)
-    #     return []  # FIXME: return이 좀 더 적절하게 구성되는 방법이 없을까?
+    def get_media_model(self):
+        MEDIA_TYPES = {
+            "T": Text,
+            "I": Image,
+            "G": Gif,
+            "V": Video,
+        }
+        return MEDIA_TYPES[self.media_type]
 
 
 class Text(models.Model):
     album = models.ForeignKey(Album, related_name="text_set", on_delete=models.CASCADE)
     media = models.CharField("텍스트", max_length=511)
+    win_count = models.PositiveIntegerField("월드컵 승리 횟수", editable=False, default=0)
+    choice_count = models.PositiveIntegerField("1:1 승리 횟수", editable=False, default=0)
+
+    def __str__(self):
+        return f"text, {self.win_count}, {self.choice_count}"
 
 
 class Image(models.Model):
     album = models.ForeignKey(Album, related_name="image_set", on_delete=models.CASCADE)
-    media = models.FileField("이미지 파일", upload_to=get_upload_path)
+    media = models.FileField("이미지 파일", upload_to="worldcupapp/image/%Y/%m/%d/%h")
+    win_count = models.PositiveIntegerField("월드컵 승리 횟수", editable=False, default=0)
+    choice_count = models.PositiveIntegerField("1:1 승리 횟수", editable=False, default=0)
 
 
 class Gif(models.Model):
     album = models.ForeignKey(Album, related_name="gif_set", on_delete=models.CASCADE)
-    media = models.FileField("움짤 파일 (gif -> mp4)", upload_to=get_upload_path)
+    media = models.FileField(
+        "움짤 파일 (gif -> mp4)", upload_to="worldcupapp/gif/%Y/%m/%d/%h"
+    )
+    win_count = models.PositiveIntegerField("월드컵 승리 횟수", editable=False, default=0)
+    choice_count = models.PositiveIntegerField("1:1 승리 횟수", editable=False, default=0)
 
 
 class Video(models.Model):
     album = models.ForeignKey(Album, related_name="video_set", on_delete=models.CASCADE)
     media = models.CharField("외부 비디오 링크", max_length=511)
+    win_count = models.PositiveIntegerField("월드컵 승리 횟수", editable=False, default=0)
+    choice_count = models.PositiveIntegerField("1:1 승리 횟수", editable=False, default=0)
 
 
-class WorldcupManager(models.Manager):
-    def create_with_album(self, worldcup_data=None, album_data=None):
-        worldcup = Worldcup(**worldcup_data)
-        album = Album(**album_data)
-        album.save()
-        worldcup.album = album
-        worldcup.save()
-        return worldcup
-
-    def update_with_album(self, worldcup, worldcup_data=None, album_data=None):
-        worldcup = worldcup
-        album = worldcup.album
-        if worldcup_data:
-            for key, value in worldcup_data.items():
-                setattr(worldcup, key, value)
-            worldcup.save()
-        if album_data:
-            for key, value in album_data.items():
-                setattr(album, key, value)
-            album.save()
-        return worldcup
-
-
-# TODO: 썸네일, 공개방식, 암호, 좋아요 구현
 class Worldcup(models.Model):
 
-    objects = WorldcupManager()
+    # TODO: A나 P로 전환할 경우 적합한 유효성 검사 필요.
+    # A: album의 미디어 갯수가 2개 미만일 때
+    # P: album의 미디어 갯수가 2개 미만일 때 + password에 대한 설정까지
+    PUBLISH_TYPES = [
+        ("A", "All, 전체공개"),
+        ("P", "Password, 암호"),
+        ("N", "Not Publish, 비공개"),
+    ]
 
     creator = models.ForeignKey(
         User, on_delete=models.CASCADE, verbose_name="작성자", editable=False
@@ -111,9 +94,18 @@ class Worldcup(models.Model):
 
     title = models.CharField("제목", max_length=127)
     intro = models.CharField("소개", max_length=255)
+
+    publish_type = models.CharField(
+        "배포 방식", max_length=1, choices=PUBLISH_TYPES, default="N"
+    )
+
+    password = models.CharField(
+        "암호",
+        blank=True,
+        max_length=31,
+        validators=[MinLengthValidator(1, "최소 한 글자 이상의 암호를 설정해주세요.")],
+    )
+
     created_at = models.DateTimeField("생성일", auto_now_add=True)
     updated_at = models.DateTimeField("수정일", auto_now=True)
     play_count = models.PositiveIntegerField("플레이 횟수", default=0, editable=False)
-
-    def __str__(self):
-        return self.title

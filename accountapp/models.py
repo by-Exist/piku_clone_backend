@@ -1,9 +1,9 @@
-from django.contrib.auth.models import AbstractUser, BaseUserManager
+from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
 from django.core.validators import MinLengthValidator, RegexValidator
 
 
-class UserManager(BaseUserManager):
+class CustomUserManager(UserManager):
     def create_with_profile(self, **kwargs):
         user = User(username=kwargs["username"])
         user.set_password(kwargs["password"])
@@ -31,7 +31,7 @@ class UserManager(BaseUserManager):
 
 class User(AbstractUser):
 
-    objects = UserManager()
+    objects = CustomUserManager()
 
 
 class Profile(models.Model):
