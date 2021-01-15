@@ -1,6 +1,8 @@
-from accountapp import serializers
-from rest_framework import viewsets
 from django.contrib.auth import get_user_model
+from rest_framework import viewsets
+from accountapp import serializers
+
+# from rest_framework_jwt.views import obtain_jwt_token
 from . import serializers
 
 User = get_user_model()

@@ -1,69 +1,190 @@
-from dataclasses import fields
-from tkinter import Text
+from worldcupapp.models import Album, Gif, Image, Text, Video, Worldcup
 from rest_framework import serializers
-from . import models
+
+
+# =====================
+# [ Text's Serializer ]
+# =====================
 
 
 class TextSerializer(serializers.ModelSerializer):
     class Meta:
-        model = models.Text
+        model = Text
+        fields = "__all__"
+
+
+class TextCreateSerializer(TextSerializer):
+    class Meta:
+        model = Text
         fields = ["media"]
+
+
+# ======================
+# [ Image's Serializer ]
+# ======================
 
 
 class ImageSerializer(serializers.ModelSerializer):
     class Meta:
-        model = models.Image
+        model = Image
+        fields = "__all__"
+
+
+class ImageCreateSerializer(ImageSerializer):
+    class Meta:
+        model = Image
         fields = ["media"]
+
+
+# =====================
+# [ Gif's Serializer ]
+# =====================
 
 
 class GifSerializer(serializers.ModelSerializer):
     class Meta:
-        model = models.Gif
+        model = Gif
+        fields = "__all__"
+
+
+class GifCreateSerializer(GifSerializer):
+    class Meta:
+        model = Gif
         fields = ["media"]
+
+
+# =====================
+# [ Video's Serializer ]
+# =====================
 
 
 class VideoSerializer(serializers.ModelSerializer):
     class Meta:
-        model = models.Video
+        model = Video
+        fields = "__all__"
+
+
+class VideoCreateSerializer(VideoSerializer):
+    class Meta:
+        model = Video
         fields = ["media"]
 
 
-# FIXME: Serializer의 어떤 동작 과정때문인지는 몰라도 media_list를 가져오기 위한 동작으로 추정되는 쿼리가 4번씩 반복된다. 가능하다면 수정.
+# ======================
+# [ Album's Serializer ]
+# ======================
+
+
 class AlbumSerializer(serializers.ModelSerializer):
     class Meta:
-        model = models.Album
-        fields = [
-            "media_type",
-            "media_list",
-        ]
+        model = Album
+        fields = "__all__"
 
+    # FIXME: 아래의 두 스태틱 메서드는 어느 위치에 있는가 가장 적절할까?
+    @staticmethod
+    def get_media_list(album):
+        for T, typ in album.MEDIA_TYPES:
+            if T == album.media_type:
+                data = getattr(album, f"{typ}_set").values_list("id", "media")
+                # data = getattr(album, f"{typ}_set").values_list(
+                #     "id", "media", "win_count", "choice_count"
+                # )  # media win_count와 choice_count 테스트용
+                return data
+        return []
+
+    @staticmethod
     def get_media_serializer_class(album):
-        media_types = {
-            "T": TextSerializer,
-            "I": ImageSerializer,
-            "G": GifSerializer,
-            "V": VideoSerializer,
+        MEDIA_TYPES = {
+            "T": TextCreateSerializer,
+            "I": ImageCreateSerializer,
+            "G": GifCreateSerializer,
+            "V": VideoCreateSerializer,
         }
-        return media_types[album.media_type]
+        return MEDIA_TYPES[album.media_type]
 
 
-class WorldcupUsedAlbumSerializer(serializers.ModelSerializer):
+class AlbumListSerializer(AlbumSerializer):
+    class Meta:
+        model = Album
+        fields = ["id", "thumbnail"]
 
-    link = serializers.HyperlinkedIdentityField("album-detail")
+
+class AlbumCreateSerializer(AlbumSerializer):
+    class Meta:
+        model = Album
+        fields = ["media_type"]
+
+
+class AlbumRetrieveSerializer(AlbumSerializer):
+
+    media_list = serializers.SerializerMethodField("get_media_list")
 
     class Meta:
-        model = models.Album
-        fields = ["media_type", "link"]
+        model = Album
+        fields = ["id", "media_type", "thumbnail", "media_list"]
+
+
+class AlbumUpdateSerializer(AlbumSerializer):
+    class Meta:
+        model = Album
+        fields = ["media_type"]
+
+
+# =========================
+# [ Worldcup's Serializer ]
+# =========================
+
+
+# TODO: 이제 validate 함수와 validate_data 함수를 잔뜩 만들어보자.
 
 
 class WorldcupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Worldcup
+        fields = "__all__"
 
-    creator = serializers.CharField(read_only=True, source="creator.profile.nickname")
-    album = WorldcupUsedAlbumSerializer()
+
+class WorldcupListSerializer(WorldcupSerializer):
+
+    album = AlbumListSerializer()
 
     class Meta:
-        model = models.Worldcup
+        model = Worldcup
+        fields = ["id", "title", "intro", "album"]
+
+
+class WorldcupCreateSerializer(WorldcupSerializer):
+
+    album = AlbumCreateSerializer()
+
+    class Meta:
+        model = Worldcup
+        fields = ["title", "intro", "publish_type", "password", "album"]
+        extra_kwargs = {"password": {"write_only": True}}
+
+    def create(self, validated_data):
+        user = self.context["request"].user
+        album_data = validated_data.pop("album")
+        album = Album.objects.create(**album_data)
+        worldcup = Worldcup.objects.create(album=album, creator=user, **validated_data)
+        return worldcup
+
+    def validate(self, attrs):
+        if attrs["publish_type"] == "P":
+            if not attrs["password"]:
+                raise serializers.ValidationError({"password": "비밀번호를 설정해주세요."})
+        return super().validate(attrs)
+
+
+class WorldcupRetrieveSerializer(WorldcupSerializer):
+
+    album = AlbumRetrieveSerializer()
+    creator = serializers.CharField(source="creator.profile.nickname", read_only=True)
+
+    class Meta:
+        model = Worldcup
         fields = [
+            "id",
             "title",
             "intro",
             "creator",
@@ -73,34 +194,19 @@ class WorldcupSerializer(serializers.ModelSerializer):
             "album",
         ]
 
-    def get_creator(self, worldcup):
-        return worldcup.creator.nickname
 
-    def create(self, validated_data):
+class WorldcupUpdateSerializer(WorldcupSerializer):
 
-        worldcup_data = validated_data
-        worldcup_data["creator"] = self.context["request"].user
+    album = AlbumUpdateSerializer()
 
-        album_data = validated_data.pop("album", None)
+    class Meta:
+        model = Worldcup
+        fields = ["title", "intro", "publish_type", "password", "album"]
 
-        worldcup = models.Worldcup.objects.create_with_album(
-            worldcup_data,
-            album_data,
-        )
-        return worldcup
 
-    def update(self, instance, validated_data):
+class MediaWinCountSerializer(serializers.Serializer):
+    pk = serializers.IntegerField()
 
-        worldcup = instance
-        worldcup_data = validated_data
-        worldcup_data["creator"] = self.context["request"].user
 
-        album_data = validated_data.pop("album", None)
-
-        worldcup = models.Worldcup.objects.update_with_album(
-            worldcup,
-            worldcup_data,
-            album_data,
-        )
-
-        return worldcup
+class MediaChoiceCountsSerializer(serializers.Serializer):
+    pk_list = serializers.ListField()

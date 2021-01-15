@@ -19,11 +19,8 @@ class Album(models.Model):
         ("V", "video"),
     ]
 
-    # TODO: 썸네일 추가 (썸네일을 만들어 저장하는 과정을 셀러리로 구현해보자)
-    # thumbnail = models.ImageField("썸네일", upload_to="Album/thumbnail/%Y/%m/%d/")
-    media_type = models.CharField(
-        "데이터 타입", max_length=1, choices=MEDIA_TYPES, default=None
-    )
+    # TODO: 디폴트값 설정 가능한가?
+    media_type = models.CharField("데이터 타입", max_length=1, choices=MEDIA_TYPES)
     thumbnail = models.ImageField(
         "썸네일", editable=False, upload_to="worldcupapp/album/thumbnail/%Y/%m/%d/"
     )
@@ -73,9 +70,6 @@ class Video(models.Model):
 
 class Worldcup(models.Model):
 
-    # TODO: A나 P로 전환할 경우 적합한 유효성 검사 필요.
-    # A: album의 미디어 갯수가 2개 미만일 때
-    # P: album의 미디어 갯수가 2개 미만일 때 + password에 대한 설정까지
     PUBLISH_TYPES = [
         ("A", "All, 전체공개"),
         ("P", "Password, 암호"),
