@@ -1,7 +1,4 @@
 # https://medium.com/ibisdev/upload-multiple-images-to-a-model-with-django-fd00d8551a1c
-
-from backend.settings.dev import MEDIA_ROOT
-from pprint import pprint
 from django.contrib.auth import get_user_model
 from django.db import models
 from django.core.validators import MinLengthValidator
@@ -15,15 +12,21 @@ class Album(models.Model):
     MEDIA_TYPES = [
         ("T", "text"),
         ("I", "image"),
-        ("G", "gif"),  # convert to mp4
+        ("G", "gif"),  # FIXME: convert to mp4
         ("V", "video"),
     ]
 
-    # TODO: 디폴트값 설정 가능한가?
     media_type = models.CharField("데이터 타입", max_length=1, choices=MEDIA_TYPES)
     thumbnail = models.ImageField(
-        "썸네일", editable=False, upload_to="worldcupapp/album/thumbnail/%Y/%m/%d/"
+        "썸네일", upload_to="worldcupapp/album/thumbnail/%Y/%m/%d/", blank=True
     )
+
+    @property
+    def media_set(self):
+        for T, typ in self.MEDIA_TYPES:
+            if T == self.media_type:
+                return getattr(self, f"{typ}_set")
+        return None
 
     def get_media_model(self):
         MEDIA_TYPES = {

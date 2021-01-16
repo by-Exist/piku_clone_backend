@@ -3,6 +3,11 @@ from django.db import models
 from django.core.validators import MinLengthValidator, RegexValidator
 
 
+# ================
+# [ User's Model ]
+# ================
+
+
 class CustomUserManager(UserManager):
     def create_with_profile(self, **kwargs):
         user = User(username=kwargs["username"])
@@ -32,6 +37,11 @@ class CustomUserManager(UserManager):
 class User(AbstractUser):
 
     objects = CustomUserManager()
+
+
+# ===================
+# [ Profile's Model ]
+# ===================
 
 
 class Profile(models.Model):

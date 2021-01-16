@@ -71,6 +71,30 @@ class VideoCreateSerializer(VideoSerializer):
 
 
 # ======================
+# [ Media's Serializer ]
+# ======================
+
+
+class MediaWinCountSerializer(serializers.Serializer):
+    pk = serializers.IntegerField()
+
+
+class MediaChoiceCountsSerializer(serializers.Serializer):
+    pk_list = serializers.ListField()
+
+
+class MediaListSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    media = serializers.CharField()
+
+
+class MediaScoreboardSerializer(serializers.Serializer):
+    media = serializers.CharField()
+    win_count = serializers.IntegerField()
+    choice_count = serializers.IntegerField()
+
+
+# ======================
 # [ Album's Serializer ]
 # ======================
 
@@ -79,28 +103,6 @@ class AlbumSerializer(serializers.ModelSerializer):
     class Meta:
         model = Album
         fields = "__all__"
-
-    # FIXME: 아래의 두 스태틱 메서드는 어느 위치에 있는가 가장 적절할까?
-    @staticmethod
-    def get_media_list(album):
-        for T, typ in album.MEDIA_TYPES:
-            if T == album.media_type:
-                data = getattr(album, f"{typ}_set").values_list("id", "media")
-                # data = getattr(album, f"{typ}_set").values_list(
-                #     "id", "media", "win_count", "choice_count"
-                # )  # media win_count와 choice_count 테스트용
-                return data
-        return []
-
-    @staticmethod
-    def get_media_serializer_class(album):
-        MEDIA_TYPES = {
-            "T": TextCreateSerializer,
-            "I": ImageCreateSerializer,
-            "G": GifCreateSerializer,
-            "V": VideoCreateSerializer,
-        }
-        return MEDIA_TYPES[album.media_type]
 
 
 class AlbumListSerializer(AlbumSerializer):
@@ -117,14 +119,14 @@ class AlbumCreateSerializer(AlbumSerializer):
 
 class AlbumRetrieveSerializer(AlbumSerializer):
 
-    media_list = serializers.SerializerMethodField("get_media_list")
+    media_set = MediaListSerializer(many=True)
 
     class Meta:
         model = Album
-        fields = ["id", "media_type", "thumbnail", "media_list"]
+        fields = ["id", "media_type", "thumbnail", "media_set"]
 
 
-class AlbumUpdateSerializer(AlbumSerializer):
+class AlbumUpdateWithPartialUpdateSerializer(AlbumSerializer):
     class Meta:
         model = Album
         fields = ["media_type"]
@@ -133,9 +135,6 @@ class AlbumUpdateSerializer(AlbumSerializer):
 # =========================
 # [ Worldcup's Serializer ]
 # =========================
-
-
-# TODO: 이제 validate 함수와 validate_data 함수를 잔뜩 만들어보자.
 
 
 class WorldcupSerializer(serializers.ModelSerializer):
@@ -159,8 +158,7 @@ class WorldcupCreateSerializer(WorldcupSerializer):
 
     class Meta:
         model = Worldcup
-        fields = ["title", "intro", "publish_type", "password", "album"]
-        extra_kwargs = {"password": {"write_only": True}}
+        fields = ["title", "intro", "album"]
 
     def create(self, validated_data):
         user = self.context["request"].user
@@ -168,12 +166,6 @@ class WorldcupCreateSerializer(WorldcupSerializer):
         album = Album.objects.create(**album_data)
         worldcup = Worldcup.objects.create(album=album, creator=user, **validated_data)
         return worldcup
-
-    def validate(self, attrs):
-        if attrs["publish_type"] == "P":
-            if not attrs["password"]:
-                raise serializers.ValidationError({"password": "비밀번호를 설정해주세요."})
-        return super().validate(attrs)
 
 
 class WorldcupRetrieveSerializer(WorldcupSerializer):
@@ -195,18 +187,36 @@ class WorldcupRetrieveSerializer(WorldcupSerializer):
         ]
 
 
-class WorldcupUpdateSerializer(WorldcupSerializer):
+class WorldcupUpdateWithPartialUpdateSerializer(WorldcupSerializer):
 
-    album = AlbumUpdateSerializer()
+    album = AlbumUpdateWithPartialUpdateSerializer()
 
     class Meta:
         model = Worldcup
         fields = ["title", "intro", "publish_type", "password", "album"]
+        # extra_kwargs = {"password": {"write_only": True}}
 
+    def validate(self, fields):
+        album = self.context["album"]
+        if (
+            (fields.get("publish_type", None))
+            and (fields["publish_type"] in ["A", "P"])
+            and (len(album.media_list) < 2)
+        ):
+            raise serializers.ValidationError(
+                {"publish_type": "월드컵을 공개하기 위해서는 최소 두 개 이상의 미디어가 포함되어 있어야 합니다."}
+            )
+        if (fields.get("publish_type") != "P") and ("password" in fields):
+            fields.pop("password")
+        return fields
 
-class MediaWinCountSerializer(serializers.Serializer):
-    pk = serializers.IntegerField()
-
-
-class MediaChoiceCountsSerializer(serializers.Serializer):
-    pk_list = serializers.ListField()
+    def update(self, worldcup, validated_data):
+        album = worldcup.album
+        album_data = validated_data.pop("album")
+        for key, value in album_data.items():
+            setattr(album, key, value)
+        album.save(update_fields=[*album_data.keys()])
+        for key, value in validated_data.items():
+            setattr(worldcup, key, value)
+        worldcup.save(update_fields=[*validated_data.keys()])
+        return worldcup
