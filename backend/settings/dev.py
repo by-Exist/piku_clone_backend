@@ -16,6 +16,7 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 INSTALLED_APPS = [
     *INSTALLED_APPS,
     "debug_toolbar",
+    "django_extensions",
 ]
 
 MIDDLEWARE = [

@@ -14,13 +14,13 @@ from pikuapp import views as worldcupapp_views
 router = DefaultRouter()
 router.register("accounts", accountapp_views.UserViewSet)
 router.register("profiles", accountapp_views.ProfileViewSet)
+router.register("worldcups", worldcupapp_views.WorldcupViewSet)
 router.register("album-texts", worldcupapp_views.TextViewSet)
 router.register("album-images", worldcupapp_views.ImageViewSet)
 router.register("albums", worldcupapp_views.AlbumViewSet)
 router.register("text-comments", worldcupapp_views.TextCommentViewSet)
 router.register("image-comments", worldcupapp_views.ImageCommentViewSet)
 router.register("comments", worldcupapp_views.CommentViewSet)
-router.register("worldcups", worldcupapp_views.WorldcupViewSet)
 
 urlpatterns = [
     path("api/", include(router.urls)),

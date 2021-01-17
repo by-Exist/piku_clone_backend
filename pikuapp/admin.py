@@ -1,32 +1,45 @@
 from django.contrib import admin
-from . import models
+from pikuapp.models import (
+    Text,
+    Image,
+    Album,
+    TextComment,
+    ImageComment,
+    Comment,
+    Worldcup,
+)
 
 
-@admin.register(models.Worldcup)
-class WorldcupAdmin(admin.ModelAdmin):
-    pass
-
-
-@admin.register(models.Album)
-class AlbumAdmin(admin.ModelAdmin):
-    pass
-
-
-@admin.register(models.Gif)
-class GifAdmin(admin.ModelAdmin):
-    pass
-
-
-@admin.register(models.Image)
-class ImageAdmin(admin.ModelAdmin):
-    pass
-
-
-@admin.register(models.Text)
+@admin.register(Text)
 class TextAdmin(admin.ModelAdmin):
     pass
 
 
-@admin.register(models.Video)
-class VideoAdmin(admin.ModelAdmin):
+@admin.register(Image)
+class ImageAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(Album)
+class AlbumAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(TextComment)
+class TextCommentAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(ImageComment)
+class ImageCommentAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(Worldcup)
+class WorldcupAdmin(admin.ModelAdmin):
     pass

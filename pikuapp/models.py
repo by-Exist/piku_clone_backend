@@ -12,19 +12,25 @@ User = get_user_model()
 
 
 class Album(models.Model):
-    class MEDIA_TYPE(models.TextChoices):
-        TEXT = "T", _("텍스트")
-        IMAGE = "I", _("이미지")
-
-    media_type = models.CharField("미디어 타입", choices=MEDIA_TYPE.choices)
     thumbnail = models.ImageField(
         "썸네일", upload_to="worldcupapp/album/thumbnail/%Y/%m/%d/", blank=True
     )
 
+    @property
+    def media_set(self):
+        media_type = self.worldcup.media_type
+        MEDIA_QUERYSET = {
+            "T": "text_set",
+            "I": "image_set",
+        }
+        return getattr(self, MEDIA_QUERYSET[media_type])
+
 
 class AbstractMedia(models.Model):
-    album = models.ForeignKey("Album", on_delete=models.CASCADE)
-    title = models.CharField("이미지 제목", max_length=31)
+
+    album = models.ForeignKey(Album, on_delete=models.CASCADE)
+
+    title = models.CharField("제목", max_length=31)
     win_count = models.PositiveIntegerField("월드컵 승리 횟수", editable=False, default=0)
     choice_count = models.PositiveIntegerField("1:1 승리 횟수", editable=False, default=0)
 
@@ -33,7 +39,7 @@ class AbstractMedia(models.Model):
 
 
 class Text(AbstractMedia):
-    media = models.FileField("이미지 파일", upload_to="worldcupapp/image/%Y/%m/%d/%h")
+    media = models.TextField("텍스트", max_length=511)
 
 
 class Image(AbstractMedia):
@@ -46,14 +52,19 @@ class Image(AbstractMedia):
 
 
 class Comment(models.Model):
-    class WORLDCUP_TYPE(models.TextChoices):
-        IMAGE = "I", _("이미지")
-
-    worldcup_type = models.CharField()
+    @property
+    def comment_set(self):
+        media_type = self.worldcup.media_type
+        MEDIA_QUERYSET = {
+            "T": "textcomment_set",
+            "I": "imagecomment_set",
+        }
+        return getattr(self, MEDIA_QUERYSET[media_type])
 
 
 class AbstractComment(models.Model):
-    comment = models.ForeignKey("Comment", on_delete=models.CASCADE)
+
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="작성자")
     worldcup = models.ForeignKey(
         "Worldcup", on_delete=models.CASCADE, verbose_name="월드컵"
@@ -64,12 +75,12 @@ class AbstractComment(models.Model):
 
 
 class TextComment(AbstractComment):
-    text = models.ForeignKey(Text, on_delete=models.CASCADE, verbose_name="댓글을 달 텍스트")
+    media = models.ForeignKey(Text, on_delete=models.CASCADE, verbose_name="텍스트 미디어")
     content = models.TextField("댓글 내용", max_length=511)
 
 
 class ImageComment(AbstractComment):
-    image = models.ForeignKey(Image, on_delete=models.CASCADE, verbose_name="댓글을 달 이미지")
+    media = models.ForeignKey(Image, on_delete=models.CASCADE, verbose_name="이미지 미디어")
     content = models.TextField("댓글 내용", max_length=511)
 
 
@@ -79,14 +90,16 @@ class ImageComment(AbstractComment):
 
 
 class Worldcup(models.Model):
-    class PUBLISH_TYPE(models.TextChoices):
-        All = "A", _("전체 공개")
-        PASSWORD = "P", _("암호 공개")
-        NO = "N", _("비공개")
+    PUBLISH_TYPE = [
+        ("A", "전체 공개"),
+        ("P", "암호 공개"),
+        ("N", "비공개"),
+    ]
 
-    class MEDIA_TYPE(models.TextChoices):
-        TEXT = "T", _("텍스트")
-        IMAGE = "I", _("이미지")
+    MEDIA_TYPE = [
+        ("T", "텍스트"),
+        ("I", "이미지"),
+    ]
 
     creator = models.ForeignKey(
         User, on_delete=models.CASCADE, verbose_name="작성자", editable=False
@@ -98,10 +111,10 @@ class Worldcup(models.Model):
     intro = models.CharField("소개", max_length=255)
 
     publish_type = models.CharField(
-        "배포 방식", max_length=1, choices=PUBLISH_TYPE.choices, default=PUBLISH_TYPE.NO
+        "배포 방식", max_length=1, choices=PUBLISH_TYPE, default="N"
     )
     media_type = models.CharField(
-        "미디어 타입", max_length=1, choices=MEDIA_TYPE.choices, default=MEDIA_TYPE.IMAGE
+        "미디어 타입", max_length=1, choices=MEDIA_TYPE, default="I"
     )
 
     password = models.CharField(
