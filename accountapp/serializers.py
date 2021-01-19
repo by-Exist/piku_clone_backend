@@ -89,7 +89,7 @@ class UserCreateSerializer(UserSerializer):
 
     class Meta:
         model = User
-        fields = ["username", "password", "profile"]
+        fields = ["username", "nickname", "password", "profile"]
         extra_kwargs = {
             "password": {
                 "style": {"input_type": "password"},
@@ -98,9 +98,9 @@ class UserCreateSerializer(UserSerializer):
 
     def create(self, validated_data):
         profile_validated_data = validated_data.pop("profile", None)
-        profile = Profile.objects.create(**profile_validated_data)
-        validated_data |= {"profile": profile}
         user = User.objects.create_user(**validated_data)
+        if profile_validated_data:
+            Profile.objects.create(user=user, **profile_validated_data)
         return user
 
 
@@ -128,8 +128,10 @@ class UserUpdateSerializer(UserSerializer):
         }
 
     def update(self, user, validated_data):
-        profile = user.profile
         profile_validated_data = validated_data.pop("profile", {})
+        if not hasattr(user, "profile"):
+            Profile.objects.create(user=user)
+        profile = user.profile
         for key, value in profile_validated_data.items():
             setattr(profile, key, value)
         profile.save()

@@ -12,7 +12,7 @@ User = get_user_model()
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
+    queryset = User.objects.select_related("profile")
     serializer_class = user_serializer.UserSerializer
 
     def get_serializer_class(self):
