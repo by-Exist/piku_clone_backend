@@ -1,11 +1,10 @@
-from accountapp.serializers import UserListSerializer, UserRetrieveSerializer
+from accountapp.serializers import UserListSerializer
+
 from pikuapp.models import (
     Text,
     Image,
     TextComment,
     ImageComment,
-    CommentBoard,
-    Album,
     Worldcup,
 )
 from rest_framework import serializers
@@ -34,6 +33,18 @@ class TextCreateSerializer(TextSerializer):
         fields = ["title", "media"]
 
 
+class TextRetrieveSerializer(TextSerializer):
+    class Meta:
+        model = Text
+        fields = ["id", "title", "media"]
+
+
+class TextUpdateSerializer(TextSerializer):
+    class Meta:
+        model = Text
+        fields = ["title", "media"]
+
+
 # ======================
 # [ Image's Serializer ]
 # ======================
@@ -52,6 +63,18 @@ class ImageListSerializer(ImageSerializer):
 
 
 class ImageCreateSerializer(ImageSerializer):
+    class Meta:
+        model = Image
+        fields = ["title", "media"]
+
+
+class ImageRetrieveSerializer(ImageSerializer):
+    class Meta:
+        model = Image
+        fields = ["id", "title", "media"]
+
+
+class ImageUpdateSerializer(ImageSerializer):
     class Meta:
         model = Image
         fields = ["title", "media"]

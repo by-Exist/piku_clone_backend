@@ -28,15 +28,6 @@ class Album(models.Model):
         "썸네일", upload_to="worldcupapp/album/thumbnail/%Y/%m/%d/", blank=True
     )
 
-    @property
-    def media_set(self):
-        media_type = self.worldcup.media_type
-        MEDIA_QUERYSET = {
-            "T": "text_set",
-            "I": "image_set",
-        }
-        return getattr(self, MEDIA_QUERYSET[media_type])
-
 
 class AbstractMedia(TimeStempedModelMixin, models.Model):
 
@@ -64,14 +55,7 @@ class Image(AbstractMedia):
 
 
 class CommentBoard(TimeStempedModelMixin, models.Model):
-    @property
-    def comment_set(self):
-        media_type = self.worldcup.media_type
-        MEDIA_QUERYSET = {
-            "T": "textcomment_set",
-            "I": "imagecomment_set",
-        }
-        return getattr(self, MEDIA_QUERYSET[media_type])
+    pass
 
 
 class AbstractComment(models.Model):

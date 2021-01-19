@@ -2,11 +2,15 @@ from pikuapp.serializers import (
     ImageCommentCreateSerializer,
     ImageCreateSerializer,
     ImageListSerializer,
+    ImageSerializer,
+    ImageUpdateSerializer,
     TextCommentCreateSerializer,
     TextCreateSerializer,
     TextListSerializer,
     TextCommentSerializer,
     ImageCommentSerializer,
+    TextSerializer,
+    TextUpdateSerializer,
     WorldcupCreateSerializer,
     WorldcupListSerializer,
     WorldcupRetrieveSerializer,
@@ -27,14 +31,17 @@ from rest_framework import viewsets
 
 class MediaViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
-        worldcup = Worldcup.objects.get(pk=self.kwargs["worldcup_pk"])
+        worldcup = (
+            Worldcup.objects.filter(pk=self.kwargs["worldcup_pk"])
+            .select_related("album")
+            .first()
+        )
         album = worldcup.album
         media_type = worldcup.media_type
         if media_type == "T":
             return Text.objects.filter(album=album)
         elif media_type == "I":
             return Image.objects.filter(album=album)
-        return super().get_queryset()
 
     def get_serializer_class(self, *args, **kwargs):
         worldcup = Worldcup.objects.get(pk=self.kwargs["worldcup_pk"])
@@ -49,7 +56,16 @@ class MediaViewSet(viewsets.ModelViewSet):
                 return TextCreateSerializer
             elif media_type == "I":
                 return ImageCreateSerializer
-        return super().get_serializer_class(*args, **kwargs)
+        elif self.action in ("update", "partial_update"):
+            if media_type == "T":
+                return TextUpdateSerializer
+            elif media_type == "I":
+                return ImageUpdateSerializer
+        else:
+            if media_type == "T":
+                return TextSerializer
+            elif media_type == "I":
+                return ImageSerializer
 
     def perform_create(self, serializer):
         album = Worldcup.objects.get(pk=self.kwargs["worldcup_pk"]).album
@@ -58,7 +74,11 @@ class MediaViewSet(viewsets.ModelViewSet):
 
 class CommentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
-        worldcup = Worldcup.objects.get(pk=self.kwargs["worldcup_pk"])
+        worldcup = (
+            Worldcup.objects.filter(pk=self.kwargs["worldcup_pk"])
+            .select_related("comment_board")
+            .first()
+        )
         comment_board = worldcup.comment_board
         media_type = worldcup.media_type
         if media_type == "T":
@@ -92,7 +112,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 
 
 class WorldcupViewSet(viewsets.ModelViewSet):
-    queryset = Worldcup.objects.all()
+    queryset = Worldcup.objects.all().select_related("album", "creator")
     serializer_class = WorldcupSerializer
 
     def get_serializer_class(self):
