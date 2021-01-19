@@ -1,8 +1,9 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from rest_framework import status
-from rest_framework.response import Response
 from accountapp.models import Profile
+
+
+User = get_user_model()
 
 
 # ========================
@@ -19,69 +20,55 @@ class ProfileSerializer(serializers.ModelSerializer):
 class ProfileListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ["id", "nickname", "avatar"]
+        fields = ["id", "avatar"]
 
 
 class ProfileCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ["nickname", "avatar"]
-
-    def create(self, validated_data):
-        user = self.context["request"].user
-        validated_data |= {"user": user}
-        profile = Profile.objects.create(**validated_data)
-        return profile
+        fields = ["avatar"]
 
 
 class ProfileRetrieveSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ["nickname", "avatar"]
+        fields = ["avatar"]
 
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ["nickname", "avatar"]
-
-    def update(self, profile, validated_data):
-        print(validated_data)
-        nickname = validated_data.get("nickname", "")
-        avatar = validated_data.get("avatar", "")
-        profile.nickname = nickname
-        profile.avatar = avatar
-        profile.save()
-        return profile
+        fields = ["avatar"]
 
 
 class ProfilePartialUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
-        fields = ["nickname", "avatar"]
-
-    def update(self, profile, validated_data):
-        nickname = validated_data.get("nickname", None)
-        avatar = validated_data.get("avatar", None)
-        if nickname:
-            profile.nickname = nickname
-        if avatar:
-            profile.avatar = avatar
-        profile.save()
-        return profile
+        fields = ["avatar"]
 
 
 # =====================
 # [ User's Serializer ]
-# required - id, password
-# other - last_login, is_superuser, username, first_name, last_name, email, is_staff, is_active, date_joined, groups, user_permissions
+#
+# fields = [
+#     id,
+#     password,
+#     last_login,
+#     is_superuser,
+#     username,
+#     first_name,
+#     last_name,
+#     email,
+#     is_staff,
+#     is_active,
+#     date_joined,
+#     groups,
+#     user_permissions,
+# ]
 # =====================
 
 
-User = get_user_model()
-
-
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
         fields = "__all__"
@@ -89,18 +76,20 @@ class UserSerializer(serializers.ModelSerializer):
 
 class UserListSerializer(UserSerializer):
 
-    nickname = serializers.CharField(source="profile.nickname")
     avatar = serializers.ImageField(source="profile.avatar")
 
     class Meta:
         model = User
-        fields = ["id", "nickname", "avatar"]
+        fields = ["id", "url", "nickname", "avatar"]
 
 
 class UserCreateSerializer(UserSerializer):
+
+    profile = ProfileCreateSerializer()
+
     class Meta:
         model = User
-        fields = ["username", "password"]
+        fields = ["username", "password", "profile"]
         extra_kwargs = {
             "password": {
                 "style": {"input_type": "password"},
@@ -108,15 +97,15 @@ class UserCreateSerializer(UserSerializer):
         }
 
     def create(self, validated_data):
-        username = validated_data["username"]
-        password = validated_data["password"]
-        user = User.objects.create_user(username=username, password=password)
+        profile_validated_data = validated_data.pop("profile", None)
+        profile = Profile.objects.create(**profile_validated_data)
+        validated_data |= {"profile": profile}
+        user = User.objects.create_user(**validated_data)
         return user
 
 
 class UserRetrieveSerializer(UserSerializer):
 
-    nickname = serializers.CharField(source="profile.nickname")
     avatar = serializers.ImageField(source="profile.avatar")
 
     class Meta:
@@ -125,32 +114,29 @@ class UserRetrieveSerializer(UserSerializer):
 
 
 class UserUpdateSerializer(UserSerializer):
+
+    profile = ProfileUpdateSerializer()
+
     class Meta:
         model = User
-        fields = ["password"]
+        fields = ["nickname", "password", "profile"]
         extra_kwargs = {
             "password": {
+                "write_only": True,
                 "style": {"input_type": "password"},
             }
         }
 
     def update(self, user, validated_data):
-        user.set_password(validated_data["password"])
-        user.save(update_fields=["password"])
-        return user
-
-
-class UserPartialUpdateSerializer(UserSerializer):
-    class Meta:
-        model = User
-        fields = ["password"]
-        extra_kwargs = {
-            "password": {
-                "style": {"input_type": "password"},
-            }
-        }
-
-    def update(self, user, validated_data):
-        user.set_password(validated_data["password"])
-        user.save(update_fields=["password"])
+        profile = user.profile
+        profile_validated_data = validated_data.pop("profile", {})
+        for key, value in profile_validated_data.items():
+            setattr(profile, key, value)
+        profile.save()
+        for key, value in validated_data.items():
+            if key != "password":
+                setattr(user, key, value)
+            else:
+                user.set_password(value)
+        user.save()
         return user

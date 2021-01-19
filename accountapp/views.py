@@ -1,56 +1,27 @@
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets
-from accountapp.models import Profile
-from accountapp.serializers import (
-    ProfileCreateSerializer,
-    ProfileListSerializer,
-    ProfilePartialUpdateSerializer,
-    ProfileUpdateSerializer,
-    UserCreateSerializer,
-    UserListSerializer,
-    UserPartialUpdateSerializer,
-    UserRetrieveSerializer,
-    UserSerializer,
-    ProfileSerializer,
-    UserUpdateSerializer,
-)
+from accountapp import serializers as user_serializer
 
 
 User = get_user_model()
 
 
-# [avatar, nickname, user]
-class ProfileViewSet(viewsets.ModelViewSet):
-    queryset = Profile.objects.all()
-    serializer_class = ProfileSerializer
-
-    def get_serializer_class(self):
-        if self.action == "list":
-            return ProfileListSerializer
-        elif self.action == "create":
-            return ProfileCreateSerializer
-        elif self.action == "retrieve":
-            return ProfileCreateSerializer
-        elif self.action == "update":
-            return ProfileUpdateSerializer
-        elif self.action == "partial_update":
-            return ProfilePartialUpdateSerializer
-        return super().get_serializer_class()
+# ===============
+# [ User's View ]
+# ===============
 
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
-    serializer_class = UserSerializer
+    serializer_class = user_serializer.UserSerializer
 
     def get_serializer_class(self):
         if self.action == "list":
-            return UserListSerializer
+            return user_serializer.UserListSerializer
         elif self.action == "create":
-            return UserCreateSerializer
+            return user_serializer.UserCreateSerializer
         elif self.action == "retrieve":
-            return UserRetrieveSerializer
-        elif self.action == "update":
-            return UserUpdateSerializer
-        elif self.action == "partial_update":
-            return UserPartialUpdateSerializer
+            return user_serializer.UserRetrieveSerializer
+        elif self.action in ["update", "partial_update"]:
+            return user_serializer.UserUpdateSerializer
         return super().get_serializer_class()

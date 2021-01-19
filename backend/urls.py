@@ -1,29 +1,33 @@
-import debug_toolbar
+from accountapp.views import UserViewSet
 from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
-from rest_framework.routers import DefaultRouter
+from rest_framework_nested import routers
 from rest_framework_jwt.views import (
     obtain_jwt_token,
     refresh_jwt_token,
     verify_jwt_token,
 )
-from accountapp import views as accountapp_views
-from pikuapp import views as worldcupapp_views
+from pikuapp.views import CommentViewSet, MediaViewSet, WorldcupViewSet
+import debug_toolbar
 
-router = DefaultRouter()
-router.register("accounts", accountapp_views.UserViewSet)
-router.register("profiles", accountapp_views.ProfileViewSet)
-router.register("worldcups", worldcupapp_views.WorldcupViewSet)
-router.register("album-texts", worldcupapp_views.TextViewSet)
-router.register("album-images", worldcupapp_views.ImageViewSet)
-router.register("albums", worldcupapp_views.AlbumViewSet)
-router.register("text-comments", worldcupapp_views.TextCommentViewSet)
-router.register("image-comments", worldcupapp_views.ImageCommentViewSet)
-router.register("comments", worldcupapp_views.CommentViewSet)
+
+router = routers.DefaultRouter()
+
+router.register("users", UserViewSet)
+router.register("worldcups", WorldcupViewSet)
+
+media_router = routers.NestedSimpleRouter(router, "worldcups", lookup="worldcup")
+media_router.register("medias", MediaViewSet, basename="media")
+
+comment_router = routers.NestedSimpleRouter(router, "worldcups", lookup="worldcup")
+comment_router.register("comments", CommentViewSet, basename="comment")
+
 
 urlpatterns = [
     path("api/", include(router.urls)),
+    path("api/", include(media_router.urls)),
+    path("api/", include(comment_router.urls)),
     path("api/token/", obtain_jwt_token),
     path("api/token/refresh/", refresh_jwt_token),
     path("api/token/verify/", verify_jwt_token),

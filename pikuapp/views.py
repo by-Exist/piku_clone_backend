@@ -1,22 +1,14 @@
-from accountapp import serializers
 from pikuapp.serializers import (
     ImageCommentCreateSerializer,
-    ImageCommentListSerializer,
     ImageCreateSerializer,
     ImageListSerializer,
     TextCommentCreateSerializer,
-    TextCommentListSerializer,
     TextCreateSerializer,
     TextListSerializer,
-    TextSerializer,
-    ImageSerializer,
-    AlbumSerializer,
     TextCommentSerializer,
     ImageCommentSerializer,
-    CommentSerializer,
     WorldcupCreateSerializer,
     WorldcupListSerializer,
-    WorldcupPartialUpdateSerializer,
     WorldcupRetrieveSerializer,
     WorldcupSerializer,
     WorldcupUpdateSerializer,
@@ -27,107 +19,81 @@ from pikuapp.models import (
     Album,
     TextComment,
     ImageComment,
-    Comment,
+    CommentBoard,
     Worldcup,
 )
-from rest_framework import status
 from rest_framework import viewsets
-from rest_framework.decorators import action
-from rest_framework.response import Response
 
 
-class ImageViewSet(viewsets.ModelViewSet):
-    queryset = Image.objects.all()
-    serializer_class = ImageSerializer
+class MediaViewSet(viewsets.ModelViewSet):
+    def get_queryset(self):
+        worldcup = Worldcup.objects.get(pk=self.kwargs["worldcup_pk"])
+        album = worldcup.album
+        media_type = worldcup.media_type
+        if media_type == "T":
+            return Text.objects.filter(album=album)
+        elif media_type == "I":
+            return Image.objects.filter(album=album)
+        return super().get_queryset()
 
+    def get_serializer_class(self, *args, **kwargs):
+        worldcup = Worldcup.objects.get(pk=self.kwargs["worldcup_pk"])
+        media_type = worldcup.media_type
+        if self.action == "list":
+            if media_type == "T":
+                return TextListSerializer
+            elif media_type == "I":
+                return ImageListSerializer
+        elif self.action == "create":
+            if media_type == "T":
+                return TextCreateSerializer
+            elif media_type == "I":
+                return ImageCreateSerializer
+        return super().get_serializer_class(*args, **kwargs)
 
-class TextViewSet(viewsets.ModelViewSet):
-    queryset = Text.objects.all()
-    serializer_class = TextSerializer
-
-
-class AlbumViewSet(viewsets.ModelViewSet):
-    queryset = Album.objects.all()
-    serializer_class = AlbumSerializer
-
-
-class TextCommentViewSet(viewsets.ModelViewSet):
-    queryset = TextComment.objects.all()
-    serializer_class = TextCommentSerializer
-
-
-class ImageCommentViewSet(viewsets.ModelViewSet):
-    queryset = ImageComment.objects.all()
-    serializer_class = ImageCommentSerializer
+    def perform_create(self, serializer):
+        album = Worldcup.objects.get(pk=self.kwargs["worldcup_pk"]).album
+        serializer.save(album=album)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
-    queryset = Comment.objects.all()
-    serializer_class = CommentSerializer
+    def get_queryset(self):
+        worldcup = Worldcup.objects.get(pk=self.kwargs["worldcup_pk"])
+        comment_board = worldcup.comment_board
+        media_type = worldcup.media_type
+        if media_type == "T":
+            return TextComment.objects.filter(comment_board=comment_board)
+        elif media_type == "I":
+            return ImageComment.objects.filter(comment_board=comment_board)
+        return super().get_queryset()
+
+    def get_serializer_class(self, *args, **kwargs):
+        worldcup = Worldcup.objects.get(pk=self.kwargs["worldcup_pk"])
+        media_type = worldcup.media_type
+        if self.action == "create":
+            if media_type == "T":
+                return TextCommentCreateSerializer
+            elif media_type == "I":
+                return ImageCommentCreateSerializer
+        if media_type == "T":
+            return TextCommentSerializer
+        elif media_type == "I":
+            return ImageCommentSerializer
+        return super().get_serializer_class(*args, **kwargs)
+
+    def perform_create(self, serializer):
+        worldcup = Worldcup.objects.get(pk=self.kwargs["worldcup_pk"])
+        comment_board = worldcup.comment_board
+        user = self.request.user
+        media = self.kwargs.get("media_id", None)
+        serializer.save(
+            worldcup=worldcup, comment_board=comment_board, media=media, user=user
+        )
 
 
 class WorldcupViewSet(viewsets.ModelViewSet):
     queryset = Worldcup.objects.all()
     serializer_class = WorldcupSerializer
-
-    @action(methods=["get"], detail=True)
-    def medias(self, request, pk=None):
-        queryset = self.get_object().album.media_set.all()
-        print(queryset)
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            print(serializer)
-            return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(queryset, many=True)
-        print(serializer)
-        return Response(serializer.data)
-
-    @medias.mapping.post
-    def upload_media(self, request, pk=None):
-        Serializer = self.get_serializer_class()
-        serializer = Serializer(data=request.data)
-        if serializer.is_valid():
-            album = self.get_object().album
-            serializer.save(album=album)
-            return Response(status=status.HTTP_201_CREATED)
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors)
-
-    @action(methods=["get"], detail=True)
-    def comments(self, request, pk=None):
-        queryset = self.get_object().comment.comment_set.all()
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
-    @comments.mapping.post
-    def upload_comment(self, request, pk=None):
-        Serializer = self.get_serializer_class()
-        context = self.get_serializer_context()
-        serializer = Serializer(data=request.data, context=context)  # context 전달
-        if serializer.is_valid():
-            comment = self.get_object().comment
-            serializer.save(comment=comment)
-            return Response(status=status.HTTP_201_CREATED)
-        else:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data=serializer.errors)
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        if self.action == "upload_comment":
-            worldcup = self.get_object()
-            context.update(
-                {
-                    "worldcup": worldcup,
-                    "comment": worldcup.comment,
-                }
-            )
-            return context
-        return context
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -136,32 +102,12 @@ class WorldcupViewSet(viewsets.ModelViewSet):
             return WorldcupCreateSerializer
         elif self.action == "retrieve":
             return WorldcupRetrieveSerializer
-        elif self.action == "update":
+        elif self.action in ["update", "partial_update"]:
             return WorldcupUpdateSerializer
-        elif self.action == "partial_update":
-            return WorldcupPartialUpdateSerializer
-        elif self.action == "medias":
-            media_type = self.get_object().media_type
-            if media_type == "T":
-                return TextListSerializer
-            elif media_type == "I":
-                return ImageListSerializer
-        elif self.action == "upload_media":
-            media_type = self.get_object().media_type
-            if media_type == "T":
-                return TextCreateSerializer
-            elif media_type == "I":
-                return ImageCreateSerializer
-        elif self.action == "comments":
-            media_type = self.get_object().media_type
-            if media_type == "T":
-                return TextCommentListSerializer
-            elif media_type == "I":
-                return ImageCommentListSerializer
-        elif self.action == "upload_comment":
-            media_type = self.get_object().media_type
-            if media_type == "T":
-                return TextCommentCreateSerializer
-            elif media_type == "I":
-                return ImageCommentCreateSerializer
         return super().get_serializer_class()
+
+    def perform_create(self, serializer):
+        album = Album.objects.create()
+        comment_board = CommentBoard.objects.create()
+        creator = self.request.user
+        serializer.save(album=album, comment_board=comment_board, creator=creator)

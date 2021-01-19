@@ -5,6 +5,18 @@ from django.core.validators import MinLengthValidator
 
 User = get_user_model()
 
+# =================
+# [ Mixin's Model ]
+# =================
+
+
+class TimeStempedModelMixin(models.Model):
+    created_at = models.DateTimeField("생성시각", auto_now_add=True)
+    updated_at = models.DateTimeField("수정시각", auto_now=True)
+
+    class Meta:
+        abstract = True
+
 
 # =================
 # [ Album's Model ]
@@ -26,7 +38,7 @@ class Album(models.Model):
         return getattr(self, MEDIA_QUERYSET[media_type])
 
 
-class AbstractMedia(models.Model):
+class AbstractMedia(TimeStempedModelMixin, models.Model):
 
     album = models.ForeignKey(Album, on_delete=models.CASCADE)
 
@@ -51,7 +63,7 @@ class Image(AbstractMedia):
 # ===================
 
 
-class Comment(models.Model):
+class CommentBoard(TimeStempedModelMixin, models.Model):
     @property
     def comment_set(self):
         media_type = self.worldcup.media_type
@@ -64,7 +76,7 @@ class Comment(models.Model):
 
 class AbstractComment(models.Model):
 
-    comment = models.ForeignKey(Comment, on_delete=models.CASCADE)
+    comment_board = models.ForeignKey(CommentBoard, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="작성자")
     worldcup = models.ForeignKey(
         "Worldcup", on_delete=models.CASCADE, verbose_name="월드컵"
@@ -75,12 +87,16 @@ class AbstractComment(models.Model):
 
 
 class TextComment(AbstractComment):
-    media = models.ForeignKey(Text, on_delete=models.CASCADE, verbose_name="텍스트 미디어")
+    media = models.ForeignKey(
+        Text, on_delete=models.CASCADE, verbose_name="텍스트 미디어", null=True, blank=True
+    )
     content = models.TextField("댓글 내용", max_length=511)
 
 
 class ImageComment(AbstractComment):
-    media = models.ForeignKey(Image, on_delete=models.CASCADE, verbose_name="이미지 미디어")
+    media = models.ForeignKey(
+        Image, on_delete=models.CASCADE, verbose_name="이미지 미디어", null=True, blank=True
+    )
     content = models.TextField("댓글 내용", max_length=511)
 
 
@@ -89,7 +105,7 @@ class ImageComment(AbstractComment):
 # ====================
 
 
-class Worldcup(models.Model):
+class Worldcup(TimeStempedModelMixin, models.Model):
     PUBLISH_TYPE = [
         ("A", "전체 공개"),
         ("P", "암호 공개"),
@@ -105,7 +121,9 @@ class Worldcup(models.Model):
         User, on_delete=models.CASCADE, verbose_name="작성자", editable=False
     )
     album = models.OneToOneField(Album, on_delete=models.CASCADE, verbose_name="미디어")
-    comment = models.OneToOneField(Comment, on_delete=models.CASCADE, verbose_name="댓글")
+    comment_board = models.OneToOneField(
+        CommentBoard, on_delete=models.CASCADE, verbose_name="댓글"
+    )
 
     title = models.CharField("제목", max_length=63)
     intro = models.CharField("소개", max_length=255)
@@ -123,7 +141,4 @@ class Worldcup(models.Model):
         max_length=31,
         validators=[MinLengthValidator(3, "세 글자 이상의 암호를 설정해주세요.")],
     )
-
-    created_at = models.DateTimeField("생성일", auto_now_add=True)
-    updated_at = models.DateTimeField("수정일", auto_now=True)
     play_count = models.PositiveIntegerField("플레이 횟수", default=0, editable=False)
