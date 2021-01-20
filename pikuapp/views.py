@@ -1,14 +1,22 @@
 from pikuapp.serializers import (
     ImageCommentCreateSerializer,
+    ImageCommentListSerializer,
+    ImageCommentRetrieveSerializer,
+    ImageCommentUpdateSerializer,
     ImageCreateSerializer,
     ImageListSerializer,
+    ImageRetrieveSerializer,
     ImageSerializer,
     ImageUpdateSerializer,
     TextCommentCreateSerializer,
+    TextCommentListSerializer,
+    TextCommentRetrieveSerializer,
+    TextCommentUpdateSerializer,
     TextCreateSerializer,
     TextListSerializer,
     TextCommentSerializer,
     ImageCommentSerializer,
+    TextRetrieveSerializer,
     TextSerializer,
     TextUpdateSerializer,
     WorldcupCreateSerializer,
@@ -20,17 +28,20 @@ from pikuapp.serializers import (
 from pikuapp.models import (
     Text,
     Image,
-    Album,
     TextComment,
     ImageComment,
-    CommentBoard,
     Worldcup,
 )
-from rest_framework import viewsets
+from rest_framework import status, viewsets
+from rest_framework.response import Response
 
 
 class MediaViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
+        MEDIA_MODEL_MANAGERS = {
+            "T": Text.objects,
+            "I": Image.objects,
+        }
         worldcup = (
             Worldcup.objects.filter(pk=self.kwargs["worldcup_pk"])
             .select_related("album")
@@ -38,42 +49,50 @@ class MediaViewSet(viewsets.ModelViewSet):
         )
         album = worldcup.album
         media_type = worldcup.media_type
-        if media_type == "T":
-            return Text.objects.filter(album=album)
-        elif media_type == "I":
-            return Image.objects.filter(album=album)
+        return MEDIA_MODEL_MANAGERS[media_type].filter(album=album)
 
     def get_serializer_class(self, *args, **kwargs):
+        SERIALIZERS = {
+            "list": {
+                "T": TextListSerializer,
+                "I": ImageListSerializer,
+            },
+            "create": {
+                "T": TextCreateSerializer,
+                "I": ImageCreateSerializer,
+            },
+            "retrieve": {
+                "T": TextRetrieveSerializer,
+                "I": ImageRetrieveSerializer,
+            },
+            "update": {
+                "T": TextUpdateSerializer,
+                "I": ImageUpdateSerializer,
+            },
+            "partial_update": {
+                "T": TextUpdateSerializer,
+                "I": ImageUpdateSerializer,
+            },
+            "delete": {
+                "T": TextSerializer,
+                "I": ImageSerializer,
+            },
+        }
         worldcup = Worldcup.objects.get(pk=self.kwargs["worldcup_pk"])
         media_type = worldcup.media_type
-        if self.action == "list":
-            if media_type == "T":
-                return TextListSerializer
-            elif media_type == "I":
-                return ImageListSerializer
-        elif self.action == "create":
-            if media_type == "T":
-                return TextCreateSerializer
-            elif media_type == "I":
-                return ImageCreateSerializer
-        elif self.action in ("update", "partial_update"):
-            if media_type == "T":
-                return TextUpdateSerializer
-            elif media_type == "I":
-                return ImageUpdateSerializer
-        else:
-            if media_type == "T":
-                return TextSerializer
-            elif media_type == "I":
-                return ImageSerializer
-
-    def perform_create(self, serializer):
-        album = Worldcup.objects.get(pk=self.kwargs["worldcup_pk"]).album
-        serializer.save(album=album)
+        try:
+            return SERIALIZERS[self.action][media_type]
+        except:
+            # FIXME: 더 적절한 처리가 있을 것이라 생각한다.
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
+        COMMENT_MODEL_MANAGERS = {
+            "T": TextComment.objects,
+            "I": ImageComment.objects,
+        }
         worldcup = (
             Worldcup.objects.filter(pk=self.kwargs["worldcup_pk"])
             .select_related("comment_board")
@@ -81,34 +100,46 @@ class CommentViewSet(viewsets.ModelViewSet):
         )
         comment_board = worldcup.comment_board
         media_type = worldcup.media_type
-        if media_type == "T":
-            return TextComment.objects.filter(comment_board=comment_board)
-        elif media_type == "I":
-            return ImageComment.objects.filter(comment_board=comment_board)
-        return super().get_queryset()
+        return (
+            COMMENT_MODEL_MANAGERS[media_type]
+            .filter(comment_board=comment_board)
+            .select_related("user", "user__profile")
+        )
 
     def get_serializer_class(self, *args, **kwargs):
+        SERIALIZERS = {
+            "list": {
+                "T": TextCommentListSerializer,
+                "I": ImageCommentListSerializer,
+            },
+            "create": {
+                "T": TextCommentCreateSerializer,
+                "I": ImageCommentCreateSerializer,
+            },
+            "retrieve": {
+                "T": TextCommentRetrieveSerializer,
+                "I": ImageCommentRetrieveSerializer,
+            },
+            "update": {
+                "T": TextCommentUpdateSerializer,
+                "I": ImageCommentUpdateSerializer,
+            },
+            "partial_update": {
+                "T": TextCommentUpdateSerializer,
+                "I": ImageCommentUpdateSerializer,
+            },
+            "delete": {
+                "T": TextCommentSerializer,
+                "I": ImageCommentSerializer,
+            },
+        }
         worldcup = Worldcup.objects.get(pk=self.kwargs["worldcup_pk"])
         media_type = worldcup.media_type
-        if self.action == "create":
-            if media_type == "T":
-                return TextCommentCreateSerializer
-            elif media_type == "I":
-                return ImageCommentCreateSerializer
-        if media_type == "T":
-            return TextCommentSerializer
-        elif media_type == "I":
-            return ImageCommentSerializer
-        return super().get_serializer_class(*args, **kwargs)
-
-    def perform_create(self, serializer):
-        worldcup = Worldcup.objects.get(pk=self.kwargs["worldcup_pk"])
-        comment_board = worldcup.comment_board
-        user = self.request.user
-        media = self.kwargs.get("media_id", None)
-        serializer.save(
-            worldcup=worldcup, comment_board=comment_board, media=media, user=user
-        )
+        try:
+            return SERIALIZERS[self.action][media_type]
+        except:
+            # FIXME: 더 적절한 처리가 있을 것이라 생각한다.
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
 class WorldcupViewSet(viewsets.ModelViewSet):
@@ -116,18 +147,12 @@ class WorldcupViewSet(viewsets.ModelViewSet):
     serializer_class = WorldcupSerializer
 
     def get_serializer_class(self):
-        if self.action == "list":
-            return WorldcupListSerializer
-        elif self.action == "create":
-            return WorldcupCreateSerializer
-        elif self.action == "retrieve":
-            return WorldcupRetrieveSerializer
-        elif self.action in ["update", "partial_update"]:
-            return WorldcupUpdateSerializer
-        return super().get_serializer_class()
-
-    def perform_create(self, serializer):
-        album = Album.objects.create()
-        comment_board = CommentBoard.objects.create()
-        creator = self.request.user
-        serializer.save(album=album, comment_board=comment_board, creator=creator)
+        SERIALIZERS = {
+            "list": WorldcupListSerializer,
+            "create": WorldcupCreateSerializer,
+            "retrieve": WorldcupRetrieveSerializer,
+            "update": WorldcupUpdateSerializer,
+            "partial_update": WorldcupUpdateSerializer,
+            "delete": WorldcupSerializer,
+        }
+        return SERIALIZERS[self.action]

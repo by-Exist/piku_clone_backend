@@ -1,6 +1,8 @@
 from accountapp.serializers import UserListSerializer
 
 from pikuapp.models import (
+    Album,
+    CommentBoard,
     Text,
     Image,
     TextComment,
@@ -8,6 +10,10 @@ from pikuapp.models import (
     Worldcup,
 )
 from rest_framework import serializers
+
+
+# TODO: Abstract MediaSerializer 또는 CommentSerializer들을 만든 뒤
+# 하위 미디어 시리얼라이저에서 상속만으로 활용할 수도 있겠다.
 
 
 # =====================
@@ -31,6 +37,12 @@ class TextCreateSerializer(TextSerializer):
     class Meta:
         model = Text
         fields = ["title", "media"]
+
+    def create(self, validated_data):
+        worldcup_pk = self.context["view"].kwargs["worldcup_pk"]
+        album = Worldcup.objects.get(pk=worldcup_pk).album
+        validated_data |= {"album": album}
+        return super().create(validated_data)
 
 
 class TextRetrieveSerializer(TextSerializer):
@@ -67,6 +79,12 @@ class ImageCreateSerializer(ImageSerializer):
         model = Image
         fields = ["title", "media"]
 
+    def create(self, validated_data):
+        worldcup_pk = self.context["view"].kwargs["worldcup_pk"]
+        album = Worldcup.objects.get(pk=worldcup_pk).album
+        validated_data |= {"album": album}
+        return super().create(validated_data)
+
 
 class ImageRetrieveSerializer(ImageSerializer):
     class Meta:
@@ -93,13 +111,20 @@ class TextCommentSerializer(serializers.ModelSerializer):
 
 class TextCommentListSerializer(TextCommentSerializer):
 
-    nickname = serializers.CharField(source="user.profile.nickname")
+    nickname = serializers.CharField(source="user.nickname")
     avatar = serializers.ImageField(source="user.profile.avatar")
-    media = serializers.CharField(source="media.media")
 
     class Meta:
         model = TextComment
-        fields = ["id", "content", "media", "nickname", "avatar"]
+        fields = [
+            "id",
+            "content",
+            "media",
+            "nickname",
+            "avatar",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class TextCommentCreateSerializer(TextCommentSerializer):
@@ -111,12 +136,41 @@ class TextCommentCreateSerializer(TextCommentSerializer):
         fields = ["media_id", "content"]
 
     def validate_media_id(self, media_id):
-        worldcup = Worldcup.objects.get(pk=self.context["view"].kwargs["worldcup_pk"])
-        if media_id not in worldcup.album.media_set.values_list("id", flat=True):
+        if not self.context["view"].get_queryset().filter(id=media_id).exists():
             raise serializers.ValidationError(
                 {"media_id": "월드컵에 사용된 미디어에 해당 id를 지닌 미디어가 존재하지 않습니다."}
             )
         return media_id
+
+    def create(self, validated_data):
+        worldcup_pk = self.context["view"].kwargs["worldcup_pk"]
+        worldcup = Worldcup.objects.get(pk=worldcup_pk)
+        comment_board = worldcup.comment_board
+        user = self.context["request"].user
+        media = self.context["view"].kwargs.get("media_id", None)
+        validated_data |= {
+            "worldcup": worldcup,
+            "comment_board": comment_board,
+            "media": media,
+            "user": user,
+        }
+        return super().create(validated_data)
+
+
+class TextCommentRetrieveSerializer(TextCommentSerializer):
+
+    nickname = serializers.CharField(source="user.nickname")
+    avatar = serializers.ImageField(source="user.profile.avatar")
+
+    class Meta:
+        model = TextComment
+        fields = ["id", "content", "media", "nickname", "avatar"]
+
+
+class TextCommentUpdateSerializer(TextCommentSerializer):
+    class Meta:
+        model = TextComment
+        fields = ["content"]
 
 
 # =============================
@@ -132,13 +186,20 @@ class ImageCommentSerializer(serializers.ModelSerializer):
 
 class ImageCommentListSerializer(ImageCommentSerializer):
 
-    nickname = serializers.CharField(source="user.profile.nickname")
+    nickname = serializers.CharField(source="user.nickname")
     avatar = serializers.ImageField(source="user.profile.avatar")
-    media = serializers.ImageField(source="media.media")
 
     class Meta:
         model = ImageComment
-        fields = ["id", "content", "media", "nickname", "avatar"]
+        fields = [
+            "id",
+            "content",
+            "media",
+            "nickname",
+            "avatar",
+            "created_at",
+            "updated_at",
+        ]
 
 
 class ImageCommentCreateSerializer(ImageCommentSerializer):
@@ -156,6 +217,36 @@ class ImageCommentCreateSerializer(ImageCommentSerializer):
                 {"media_id": "월드컵에 사용된 미디어에 해당 id를 지닌 미디어가 존재하지 않습니다."}
             )
         return media_id
+
+    def create(self, validated_data):
+        worldcup_pk = self.context["view"].kwargs["worldcup_pk"]
+        worldcup = Worldcup.objects.get(pk=worldcup_pk)
+        comment_board = worldcup.comment_board
+        user = self.context["request"].user
+        media = self.context["view"].kwargs.get("media_id", None)
+        validated_data |= {
+            "worldcup": worldcup,
+            "comment_board": comment_board,
+            "media": media,
+            "user": user,
+        }
+        return super().create(validated_data)
+
+
+class ImageCommentRetrieveSerializer(ImageCommentSerializer):
+
+    nickname = serializers.CharField(source="user.nickname")
+    avatar = serializers.ImageField(source="user.profile.avatar")
+
+    class Meta:
+        model = ImageComment
+        fields = ["id", "content", "media", "nickname", "avatar"]
+
+
+class ImageCommentUpdateSerializer(ImageCommentSerializer):
+    class Meta:
+        model = ImageComment
+        fields = ["content"]
 
 
 # =========================
@@ -203,6 +294,17 @@ class WorldcupCreateSerializer(WorldcupSerializer):
             "intro",
             "media_type",
         ]
+
+    def create(self, validated_data):
+        album = Album.objects.create()
+        comment_board = CommentBoard.objects.create()
+        creator = self.context["request"].user
+        validated_data |= {
+            "album": album,
+            "comment_board": comment_board,
+            "creator": creator,
+        }
+        return super().create(validated_data)
 
 
 class WorldcupRetrieveSerializer(WorldcupSerializer):
@@ -255,5 +357,5 @@ class WorldcupUpdateSerializer(WorldcupSerializer):
         publish_type = attrs.get("publish_type", None)
         password = attrs.get("password", None)
         if publish_type == "P" and not password:
-            raise serializers.ValidationError({"password": "해당 월드컵의 암호를 지정해주세요."})
+            raise serializers.ValidationError({"password": "암호 공개를 할 경우 암호가 필요합니다."})
         return attrs
