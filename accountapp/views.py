@@ -1,3 +1,4 @@
+from accountapp.policys import UserViewSetPolicy
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets
 from accountapp import serializers as user_serializer
@@ -14,6 +15,7 @@ User = get_user_model()
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.select_related("profile")
     serializer_class = user_serializer.UserSerializer
+    permission_classes = [UserViewSetPolicy]
 
     def get_serializer_class(self):
         if self.action == "list":
