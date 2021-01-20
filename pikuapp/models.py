@@ -5,6 +5,7 @@ from django.core.validators import MinLengthValidator
 
 User = get_user_model()
 
+
 # =================
 # [ Mixin's Model ]
 # =================
@@ -54,17 +55,19 @@ class Image(AbstractMedia):
 # ===================
 
 
-class CommentBoard(TimeStempedModelMixin, models.Model):
+class CommentBoard(models.Model):
     pass
 
 
-class AbstractComment(models.Model):
+class AbstractComment(TimeStempedModelMixin, models.Model):
 
     comment_board = models.ForeignKey(CommentBoard, on_delete=models.CASCADE)
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="작성자")
     worldcup = models.ForeignKey(
         "Worldcup", on_delete=models.CASCADE, verbose_name="월드컵"
     )
+
+    content = models.TextField("댓글 내용", max_length=511)
 
     class Meta:
         abstract = True
@@ -74,14 +77,12 @@ class TextComment(AbstractComment):
     media = models.ForeignKey(
         Text, on_delete=models.CASCADE, verbose_name="텍스트 미디어", null=True, blank=True
     )
-    content = models.TextField("댓글 내용", max_length=511)
 
 
 class ImageComment(AbstractComment):
     media = models.ForeignKey(
         Image, on_delete=models.CASCADE, verbose_name="이미지 미디어", null=True, blank=True
     )
-    content = models.TextField("댓글 내용", max_length=511)
 
 
 # ====================
