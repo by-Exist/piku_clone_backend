@@ -91,6 +91,7 @@ class ImageComment(AbstractComment):
 
 
 class Worldcup(TimeStempedModelMixin, models.Model):
+
     PUBLISH_TYPE = [
         ("A", "전체 공개"),
         ("P", "암호 공개"),

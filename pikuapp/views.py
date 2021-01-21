@@ -34,9 +34,13 @@ from pikuapp.models import (
 )
 from rest_framework import status, viewsets
 from rest_framework.response import Response
+from . import policys
 
 
 class MediaViewSet(viewsets.ModelViewSet):
+
+    permission_classes = [policys.MediaViewSetPolicy]
+
     def get_queryset(self):
         MEDIA_MODEL_MANAGERS = {
             "T": Text.objects,
@@ -88,6 +92,9 @@ class MediaViewSet(viewsets.ModelViewSet):
 
 
 class CommentViewSet(viewsets.ModelViewSet):
+
+    permission_classes = [policys.CommentViewSetPolicy]
+
     def get_queryset(self):
         COMMENT_MODEL_MANAGERS = {
             "T": TextComment.objects,
@@ -145,6 +152,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 class WorldcupViewSet(viewsets.ModelViewSet):
     queryset = Worldcup.objects.all().select_related("album", "creator")
     serializer_class = WorldcupSerializer
+    permission_classes = [policys.WorldcupViewSetPolicy]
 
     def get_serializer_class(self):
         SERIALIZERS = {
