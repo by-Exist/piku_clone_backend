@@ -34,6 +34,8 @@ from pikuapp.models import (
 )
 from rest_framework import status, viewsets
 from rest_framework.response import Response
+from rest_framework.filters import SearchFilter, OrderingFilter
+from django_filters.rest_framework import DjangoFilterBackend
 from . import policys
 
 
@@ -153,6 +155,12 @@ class WorldcupViewSet(viewsets.ModelViewSet):
     queryset = Worldcup.objects.all().select_related("album", "creator")
     serializer_class = WorldcupSerializer
     permission_classes = [policys.WorldcupViewSetPolicy]
+    
+    filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
+    filterset_fields = ["media_type"]
+    search_fields = ["title", "intro"]
+    ordering_fields = ["id", "play_count"]
+    ordering = ["-id"]
 
     def get_serializer_class(self):
         SERIALIZERS = {
