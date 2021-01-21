@@ -3,21 +3,17 @@ from django.contrib.auth import get_user_model
 
 
 class UserViewSetPolicy(AccessPolicy):
+
     statements = [
         {
-            "principal": "anonymous",
-            "action": ["create", "retrieve", "list"],
+            "principal": ["*"],
+            "action": ["create", "<safe_methods>"],
             "effect": "allow",
         },
         {
-            "principal": "authenticated",
-            "action": ["create", "list", "retrieve"],
-            "effect": "allow",
-        },
-        {
-            "principal": "authenticated",
+            "principal": ["authenticated"],
             "action": ["update", "partial_update", "destroy"],
-            "condition": "is_self_or_admin",
+            "condition": ["is_self_or_superuser"],
             "effect": "allow",
         },
     ]
@@ -26,12 +22,9 @@ class UserViewSetPolicy(AccessPolicy):
         user = request.user
         return getattr(user, "is_superuser")
 
-    def is_self_or_admin(self, request, view, action):
+    def is_self_or_superuser(self, request, view, action):
         user = request.user
         detail_user = get_user_model().objects.get(pk=view.kwargs["pk"])
-        result = False
-        if user == detail_user:
-            result = True
-        if user.is_superuser:
-            result = True
-        return result
+        is_self = user == detail_user
+        is_superuser = user.is_superuser
+        return is_self or is_superuser
