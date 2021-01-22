@@ -342,7 +342,6 @@ class WorldcupUpdateSerializer(WorldcupSerializer):
         fields = [
             "title",
             "intro",
-            "media_type",
             "publish_type",
             "password",
         ]
