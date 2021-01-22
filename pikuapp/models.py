@@ -30,6 +30,11 @@ class Album(models.Model):
     )
 
 
+# =================
+# [ Media's Model ]
+# =================
+
+
 class AbstractMedia(TimeStempedModelMixin, models.Model):
 
     album = models.ForeignKey(Album, on_delete=models.CASCADE)
@@ -50,13 +55,42 @@ class Image(AbstractMedia):
     media = models.FileField("이미지 파일", upload_to="worldcupapp/image/%Y/%m/%d/%h")
 
 
-# ===================
-# [ Comment's Model ]
-# ===================
+# =======================
+# [ MediaReport's Model ]
+# =======================
+
+
+class MediaReport(TimeStempedModelMixin, models.Model):
+
+    REPORT_CATEGORY = [
+        ("음란물", "음란물을 게시하였습니다."),
+        ("기타", "기타"),
+    ]
+
+    reporter = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="신고자")
+    worldcup = models.ForeignKey(
+        "Worldcup",
+        on_delete=models.CASCADE,
+        verbose_name="신고된 미디어가 포함된 월드컵",
+    )
+
+    media_id = models.PositiveIntegerField("신고된 미디어 id")
+    category = models.TextField("신고 사유", choices=REPORT_CATEGORY)
+    contents = models.TextField("신고 내용", max_length=255, blank=True)
+
+
+# ========================
+# [ CommentBoard's Model ]
+# ========================
 
 
 class CommentBoard(models.Model):
     pass
+
+
+# ===================
+# [ Comment's Model ]
+# ===================
 
 
 class AbstractComment(TimeStempedModelMixin, models.Model):
@@ -83,6 +117,28 @@ class ImageComment(AbstractComment):
     media = models.ForeignKey(
         Image, on_delete=models.CASCADE, verbose_name="이미지 미디어", null=True, blank=True
     )
+
+
+# =========================
+# [ CommentReport's Model ]
+# =========================
+
+
+class CommentReport(TimeStempedModelMixin, models.Model):
+
+    REPORT_CATEGORY = [
+        ("욕설", "해당 댓글에 욕설이 포함되어 있습니다."),
+        ("기타", "기타"),
+    ]
+
+    reporter = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="신고자")
+    worldcup = models.ForeignKey(
+        "Worldcup", on_delete=models.CASCADE, verbose_name="신고된 댓글이 포함된 월드컵"
+    )
+
+    comment_id = models.PositiveIntegerField("신고된 댓글 id")
+    category = models.TextField("신고 사유", choices=REPORT_CATEGORY)
+    contents = models.TextField("신고 내용", max_length=255, blank=True)
 
 
 # ====================

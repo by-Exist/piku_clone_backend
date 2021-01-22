@@ -1,8 +1,11 @@
+from django.shortcuts import get_object_or_404
+from django.urls import reverse
 from accountapp.serializers import UserListSerializer
-
 from pikuapp.models import (
     Album,
     CommentBoard,
+    CommentReport,
+    MediaReport,
     Text,
     Image,
     TextComment,
@@ -96,6 +99,87 @@ class ImageUpdateSerializer(ImageSerializer):
     class Meta:
         model = Image
         fields = ["title", "media"]
+
+
+# ============================
+# [ MediaReport's Serializer ]
+# ============================
+
+
+class MediaReportSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = MediaReport
+        fields = "__all__"
+
+    def get_media_url(self, obj):
+        url = reverse("media-detail", args=[obj.worldcup.pk, obj.media_id])
+        return self.context["request"].build_absolute_uri(url)
+
+
+class MediaReportListSerializer(MediaReportSerializer):
+
+    media_url = serializers.SerializerMethodField("get_media_url")
+
+    class Meta:
+        model = MediaReport
+        fields = [
+            "url",
+            "worldcup",
+            "media_url",
+            "reporter",
+            "category",
+            "contents",
+        ]
+
+
+class MediaReportCreateSerializer(MediaReportSerializer):
+
+    worldcup_id = serializers.IntegerField()
+
+    class Meta:
+        model = MediaReport
+        fields = ["worldcup_id", "media_id", "category", "contents"]
+
+    def validate(self, attrs):
+        worldcup = get_object_or_404(Worldcup, pk=attrs["worldcup_id"])
+        MEDIA_TYPES = {
+            "T": Text,
+            "I": Image,
+        }
+        media_ids = (
+            MEDIA_TYPES[worldcup.media_type]
+            .objects.filter(album=worldcup.album)
+            .values_list("id", flat=True)
+        )
+        if not attrs["media_id"] in media_ids:
+            raise serializers.ValidationError({"media_id": "해당 월드컵에 미디어가 존재하지 않습니다."})
+        return attrs
+
+    def create(self, validated_data):
+        reporter = self.context["request"].user
+        worldcup = get_object_or_404(Worldcup, pk=validated_data.pop("worldcup_id"))
+        validated_data |= {
+            "reporter": reporter,
+            "worldcup": worldcup,
+        }
+        return super().create(validated_data)
+
+
+class MediaReportRetrieveSerializer(MediaReportSerializer):
+
+    media_url = serializers.SerializerMethodField("get_media_url")
+
+    class Meta:
+        model = MediaReport
+        fields = [
+            "worldcup",
+            "media_url",
+            "reporter",
+            "category",
+            "contents",
+            "created_at",
+            "updated_at",
+        ]
 
 
 # ============================
@@ -210,13 +294,14 @@ class ImageCommentCreateSerializer(ImageCommentSerializer):
         model = ImageComment
         fields = "media_id", "content"
 
-    def validate_media_id(self, media_id):
-        worldcup = self.context["worldcup"]
-        if media_id not in worldcup.album.media_set.values_list("id", flat=True):
-            raise serializers.ValidationError(
-                {"media_id": "월드컵에 사용된 미디어에 해당 id를 지닌 미디어가 존재하지 않습니다."}
-            )
-        return media_id
+    # FIXME: album의 media_set 프로퍼티를 활용해야 하나?
+    # def validate_media_id(self, media_id):
+    #     worldcup = self.context["worldcup"]
+    #     if media_id not in worldcup.album.media_set.values_list("id", flat=True):
+    #         raise serializers.ValidationError(
+    #             {"media_id": "월드컵에 사용된 미디어에 해당 id를 지닌 미디어가 존재하지 않습니다."}
+    #         )
+    #     return media_id
 
     def create(self, validated_data):
         worldcup_pk = self.context["view"].kwargs["worldcup_pk"]
@@ -249,23 +334,89 @@ class ImageCommentUpdateSerializer(ImageCommentSerializer):
         fields = ["content"]
 
 
+# ==============================
+# [ CommentReport's Serializer ]
+# ==============================
+
+
+class CommentReportSerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = CommentReport
+        fields = "__all__"
+
+    def get_comment_url(self, obj):
+        url = reverse("comment-detail", args=[obj.worldcup.pk, obj.comment_id])
+        return self.context["request"].build_absolute_uri(url)
+
+
+class CommentReportListSerializer(CommentReportSerializer):
+
+    comment_url = serializers.SerializerMethodField("get_comment_url")
+
+    class Meta:
+        model = CommentReport
+        fields = [
+            "url",
+            "worldcup",
+            "comment_url",
+            "reporter",
+            "category",
+            "contents",
+        ]
+
+
+class CommentReportCreateSerializer(CommentReportSerializer):
+
+    worldcup_id = serializers.IntegerField()
+
+    class Meta:
+        model = CommentReport
+        fields = ["worldcup_id", "comment_id", "category", "contents"]
+
+    def validate(self, attrs):
+        worldcup = get_object_or_404(Worldcup, pk=attrs["worldcup_id"])
+        MEDIA_TYPES = {
+            "T": TextComment,
+            "I": ImageComment,
+        }
+        comment_ids = (
+            MEDIA_TYPES[worldcup.media_type]
+            .objects.filter(comment_board=worldcup.comment_board)
+            .values_list("id", flat=True)
+        )
+        if not attrs["comment_id"] in comment_ids:
+            raise serializers.ValidationError({"comment_id": "해당 월드컵에 댓글이 존재하지 않습니다."})
+        return attrs
+
+    def create(self, validated_data):
+        reporter = self.context["request"].user
+        worldcup = get_object_or_404(Worldcup, pk=validated_data.pop("worldcup_id"))
+        validated_data |= {
+            "reporter": reporter,
+            "worldcup": worldcup,
+        }
+        return super().create(validated_data)
+
+
+class CommentReportRetrieveSerializer(CommentReportSerializer):
+
+    comment_url = serializers.SerializerMethodField("get_comment_url")
+
+    class Meta:
+        model = CommentReport
+        fields = [
+            "worldcup",
+            "comment_url",
+            "reporter",
+            "category",
+            "contents",
+            "created_at",
+            "updated_at",
+        ]
+
+
 # =========================
 # [ Worldcup's Serializer ]
-#
-# fields = [
-#     "id",
-#     "album",
-#     "creator",
-#     "comment_board",
-#     "title",
-#     "intro",
-#     "publish_type",
-#     "media_type",
-#     "password",
-#     "created_at",
-#     "updated_at",
-#     "play_count",
-# ]
 # =========================
 
 

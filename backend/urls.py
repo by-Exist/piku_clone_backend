@@ -8,7 +8,13 @@ from rest_framework_jwt.views import (
     refresh_jwt_token,
     verify_jwt_token,
 )
-from pikuapp.views import CommentViewSet, MediaViewSet, WorldcupViewSet
+from pikuapp.views import (
+    CommentReportViewSet,
+    CommentViewSet,
+    MediaReportViewSet,
+    MediaViewSet,
+    WorldcupViewSet,
+)
 import debug_toolbar
 
 
@@ -16,6 +22,8 @@ router = routers.DefaultRouter()
 
 router.register("users", UserViewSet)
 router.register("worldcups", WorldcupViewSet)
+router.register("reports/medias", MediaReportViewSet)
+router.register("reports/comments", CommentReportViewSet)
 
 media_router = routers.NestedSimpleRouter(router, "worldcups", lookup="worldcup")
 media_router.register("medias", MediaViewSet, basename="media")
