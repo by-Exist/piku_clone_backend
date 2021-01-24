@@ -13,8 +13,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # Third apps
-    "rest_framework",
     "django_filters",
+    "drf_yasg",
+    "rest_framework",
     # Local apps
     "accountapp",
     "pikuapp",
