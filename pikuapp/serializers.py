@@ -123,6 +123,7 @@ class MediaReportListSerializer(MediaReportSerializer):
     class Meta:
         model = MediaReport
         fields = [
+            "id",
             "url",
             "worldcup",
             "media_url",
@@ -192,16 +193,22 @@ class TextCommentSerializer(serializers.ModelSerializer):
         model = TextComment
         fields = "__all__"
 
+    def get_url(self, obj):
+        url = reverse("comment-detail", args=[obj.worldcup.pk, obj.pk])
+        return self.context["request"].build_absolute_uri(url)
+
 
 class TextCommentListSerializer(TextCommentSerializer):
 
     nickname = serializers.CharField(source="user.nickname")
     avatar = serializers.ImageField(source="user.profile.avatar")
+    url = serializers.SerializerMethodField("get_url")
 
     class Meta:
         model = TextComment
         fields = [
             "id",
+            "url",
             "content",
             "media",
             "nickname",
@@ -267,16 +274,22 @@ class ImageCommentSerializer(serializers.ModelSerializer):
         model = ImageComment
         fields = "__all__"
 
+    def get_url(self, obj):
+        url = reverse("comment-detail", args=[obj.worldcup.pk, obj.pk])
+        return self.context["request"].build_absolute_uri(url)
+
 
 class ImageCommentListSerializer(ImageCommentSerializer):
 
     nickname = serializers.CharField(source="user.nickname")
     avatar = serializers.ImageField(source="user.profile.avatar")
+    url = serializers.SerializerMethodField("get_url")
 
     class Meta:
         model = ImageComment
         fields = [
             "id",
+            "url",
             "content",
             "media",
             "nickname",
@@ -356,6 +369,7 @@ class CommentReportListSerializer(CommentReportSerializer):
     class Meta:
         model = CommentReport
         fields = [
+            "id",
             "url",
             "worldcup",
             "comment_url",

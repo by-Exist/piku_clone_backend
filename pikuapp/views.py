@@ -141,7 +141,7 @@ class CommentViewSet(viewsets.ModelViewSet):
         return (
             COMMENT_MODEL_MANAGERS[media_type]
             .filter(comment_board=comment_board)
-            .select_related("user", "user__profile")
+            .select_related("user", "user__profile", "worldcup")
         )
 
     def get_serializer_class(self, *args, **kwargs):
@@ -198,7 +198,7 @@ class CommentReportViewSet(viewsets.ModelViewSet):
 
 
 class WorldcupViewSet(viewsets.ModelViewSet):
-    queryset = Worldcup.objects.all().select_related("album", "creator")
+    queryset = Worldcup.objects.select_related("album", "creator")
     serializer_class = WorldcupSerializer
     permission_classes = [policys.WorldcupViewSetPolicy]
 
