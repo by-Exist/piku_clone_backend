@@ -30,11 +30,31 @@ class MediaViewSetPolicy(AccessPolicy):
         return is_worldcup_creator or is_superuser
 
 
+class MediaReportViewSetPolicy(AccessPolicy):
+
+    statements = [
+        {
+            "principal": ["authenticated"],
+            "action": ["create"],
+            "effect": "allow",
+        },
+        {
+            "principal": ["authenticated"],
+            "action": ["list", "retrieve", "update", "partial_update", "delete"],
+            "condition": ["is_superuser"],
+            "effect": "allow",
+        },
+    ]
+
+    def is_superuser(self, request, view, action):
+        return request.user.is_superuser
+
+
 class CommentViewSetPolicy(AccessPolicy):
 
     statements = [
         {
-            "principal": ["*"],
+            "principal": ["authenticated"],
             "action": ["create", "<safe_methods>"],
             "effect": "allow",
         },
@@ -52,6 +72,26 @@ class CommentViewSetPolicy(AccessPolicy):
         is_writer = comment.user is writer
         is_superuser = writer.is_superuser
         return is_writer or is_superuser
+
+
+class CommentReportViewSetPolicy(AccessPolicy):
+
+    statements = [
+        {
+            "principal": ["authenticated"],
+            "action": ["create"],
+            "effect": "allow",
+        },
+        {
+            "principal": ["authenticated"],
+            "action": ["list", "retrieve", "update", "partial_update", "delete"],
+            "condition": ["is_superuser"],
+            "effect": "allow",
+        },
+    ]
+
+    def is_superuser(self, request, view, action):
+        return request.user.is_superuser
 
 
 class WorldcupViewSetPolicy(AccessPolicy):

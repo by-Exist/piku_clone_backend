@@ -106,8 +106,10 @@ class MediaViewSet(viewsets.ModelViewSet):
 
 
 class MediaReportViewSet(viewsets.ModelViewSet):
+
     queryset = MediaReport.objects.select_related("worldcup")
     serializer_class = MediaReportSerializer
+    permission_classes = [policys.MediaReportViewSetPolicy]
 
     def get_serializer_class(self):
         QUERYSETS = {
@@ -181,6 +183,7 @@ class CommentViewSet(viewsets.ModelViewSet):
 class CommentReportViewSet(viewsets.ModelViewSet):
     queryset = CommentReport.objects.select_related("worldcup")
     serializer_class = CommentReportSerializer
+    permission_classes = [policys.CommentReportViewSetPolicy]
 
     def get_serializer_class(self):
         print(self.action)

@@ -22,14 +22,13 @@ router = routers.DefaultRouter()
 
 router.register("users", UserViewSet)
 router.register("worldcups", WorldcupViewSet)
-router.register("reports/medias", MediaReportViewSet)
-router.register("reports/comments", CommentReportViewSet)
-
 media_router = routers.NestedSimpleRouter(router, "worldcups", lookup="worldcup")
 media_router.register("medias", MediaViewSet, basename="media")
-
 comment_router = routers.NestedSimpleRouter(router, "worldcups", lookup="worldcup")
 comment_router.register("comments", CommentViewSet, basename="comment")
+
+router.register("reports/medias", MediaReportViewSet)
+router.register("reports/comments", CommentReportViewSet)
 
 
 urlpatterns = [
